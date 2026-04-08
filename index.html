@@ -34,6 +34,7 @@
             padding: 20px;
             text-align: center;
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            position: relative;
         }
 
         button {
@@ -63,6 +64,7 @@
             margin: 20px auto;
             border: 2px solid #333;
             background-color: #fff;
+            width: fit-content;
         }
 
         .cell {
@@ -72,6 +74,8 @@
             align-items: center;
             font-size: 2em;
             cursor: pointer;
+            width: 60px;
+            height: 60px;
         }
 
         .score {
@@ -108,12 +112,12 @@
             border-radius: 10px;
             padding: 10px;
             background-color: #f0f0f0;
+            text-align: left;
         }
     </style>
 </head>
 <body>
     <div class="container">
-
         <!-- MENU -->
         <div id="menu" class="card">
             <h1>Chào mừng đến cờ caro</h1>
@@ -126,7 +130,7 @@
         <!-- MODE -->
         <div id="mode" class="card hidden">
             <button class="back-btn" onclick="backMenu()">←</button>
-            <h1>Chọn mode</h1>
+            <h1>Chọn kích thước bàn</h1>
             <div class="wrap-btn">
                 <button onclick="selectSize(3)">3 x 3</button>
                 <button onclick="selectSize(4)">4 x 4</button>
@@ -173,10 +177,9 @@
             <button class="back-btn" onclick="backMenu()">←</button>
             <h1>Bảng xếp hạng</h1>
             <div class="list-ranking" id="rankingList">
-                <!-- Danh sách ranking sẽ được thêm bằng JS -->
+                <p>Chưa có dữ liệu</p>
             </div>
         </div>
-
     </div>
 
     <script>
@@ -185,16 +188,24 @@
         let playerTurn = 'X';
         let board = [];
         let score = { X: 0, O: 0 };
+        let gameOver = false;
+        let difficulty = 2; // 1-dễ, 2-trung bình, 3-khó
 
         function showMode(mode) {
             currentMode = mode;
             document.getElementById('menu').classList.add('hidden');
-            document.getElementById('mode').classList.remove('hidden');
+            if (mode === 'computer') {
+                document.getElementById('chedo').classList.remove('hidden');
+            } else {
+                document.getElementById('mode').classList.remove('hidden');
+            }
         }
 
         function backMenu() {
             document.getElementById('mode').classList.add('hidden');
             document.getElementById('rank').classList.add('hidden');
+            document.getElementById('chedo').classList.add('hidden');
+            document.getElementById('game').classList.add('hidden');
             document.getElementById('menu').classList.remove('hidden');
         }
 
@@ -217,8 +228,15 @@
 
         function startGame() {
             document.getElementById('mode').classList.add('hidden');
+            document.getElementById('chedo').classList.add('hidden');
             document.getElementById('game').classList.remove('hidden');
+
             document.getElementById('lblMode').innerText = currentMode === 'computer' ? 'Chơi với máy' : 'Chơi với người';
+            playerTurn = 'X';
+            gameOver = false;
+
+            score = { X: 0, O: 0 };
+            updateScore();
             createBoard();
         }
 
@@ -229,6 +247,7 @@
             container.style.gridTemplateColumns = `repeat(${boardSize}, 60px)`;
             container.style.gridTemplateRows = `repeat(${boardSize}, 60px)`;
             container.className = 'board';
+
             for (let i = 0; i < boardSize; i++) {
                 for (let j = 0; j < boardSize; j++) {
                     const cell = document.createElement('div');
@@ -242,48 +261,130 @@
         }
 
         function handleClick(row, col, cell) {
-            if (board[row][col]) return;
-            board[row][col] = playerTurn;
-            cell.innerText = playerTurn;
-            if (checkWin(playerTurn)) {
-                alert(`${playerTurn} thắng!`);
-                score[playerTurn]++;
-                updateScore();
-                resetBoard();
-                return;
+            if (board[row][col] || gameOver) return;
+
+            // PvP
+            if (currentMode === 'player') {
+                board[row][col] = playerTurn;
+                cell.innerText = playerTurn;
+                if (checkWin(playerTurn)) {
+                    alert(`${playerTurn} thắng!`);
+                    score[playerTurn]++;
+                    updateScore();
+                    gameOver = true;
+                    return;
+                }
+                if (checkDraw()) { alert("Hòa!"); gameOver = true; return; }
+                playerTurn = playerTurn === 'X' ? 'O' : 'X';
             }
-            playerTurn = playerTurn === 'X' ? 'O' : 'X';
+            else { // PvC
+                board[row][col] = 'X';
+                cell.innerText = 'X';
+                if (checkWin('X')) { alert("Bạn thắng!"); score.X++; updateScore(); gameOver = true; return; }
+                if (checkDraw()) { alert("Hòa!"); gameOver = true; return; }
+                setTimeout(computerMove, 500);
+            }
+        }
+
+        function computerMove() {
+            if (gameOver) return;
+            let empty = [];
+            for (let i = 0; i < boardSize; i++) {
+                for (let j = 0; j < boardSize; j++) {
+                    if (!board[i][j]) empty.push([i, j]);
+                }
+            }
+            if (empty.length === 0) return;
+
+            let move;
+            if (difficulty === 1) { // dễ
+                move = empty[Math.floor(Math.random() * empty.length)];
+            } else if (difficulty === 2) { // trung bình
+                move = findMove('O') || findMove('X') || empty[Math.floor(Math.random() * empty.length)];
+            } else { // khó
+                move = findBestMove() || empty[Math.floor(Math.random() * empty.length)];
+            }
+
+            const [r, c] = move;
+            board[r][c] = 'O';
+            const cells = document.getElementsByClassName('cell');
+            for (let cell of cells) {
+                if (parseInt(cell.dataset.row) === r && parseInt(cell.dataset.col) === c) {
+                    cell.innerText = 'O'; break;
+                }
+            }
+            if (checkWin('O')) { alert("Máy thắng!"); score.O++; updateScore(); gameOver = true; return; }
+            if (checkDraw()) { alert("Hòa!"); gameOver = true; return; }
         }
 
         function checkWin(player) {
-            // check rows, cols, diagonals
+            // row & col
             for (let i = 0; i < boardSize; i++) {
                 if (board[i].every(c => c === player)) return true;
                 if (board.map(r => r[i]).every(c => c === player)) return true;
             }
+            // diagonals
             if (board.map((r, i) => r[i]).every(c => c === player)) return true;
             if (board.map((r, i) => r[boardSize - 1 - i]).every(c => c === player)) return true;
             return false;
         }
 
-        function resetBoard() {
-            createBoard();
-            playerTurn = 'X';
+        function checkDraw() {
+            return board.flat().every(c => c);
         }
 
-        function newGame() {
-            score = { X: 0, O: 0 };
-            updateScore();
-            resetBoard();
-        }
-
-        function updateScore() {
-            document.getElementById('lblX').innerText = `X: ${score.X}`;
-            document.getElementById('lblO').innerText = `O: ${score.O}`;
-        }
+        function resetBoard() { createBoard(); playerTurn = 'X'; gameOver = false; }
+        function newGame() { score = { X: 0, O: 0 }; updateScore(); resetBoard(); }
+        function updateScore() { document.getElementById('lblX').innerText = `X: ${score.X}`; document.getElementById('lblO').innerText = `O: ${score.O}`; }
 
         function setDifficulty(level) {
-            alert('Chế độ ' + level);
+            if (level === 'easy') difficulty = 1;
+            else if (level === 'medium') difficulty = 2;
+            else difficulty = 3;
+            document.getElementById('chedo').classList.add('hidden');
+            document.getElementById('mode').classList.remove('hidden');
+        }
+
+        // Simple findMove for medium difficulty
+        function findMove(symbol) {
+            // check rows
+            for (let i = 0; i < boardSize; i++) {
+                let row = board[i], count = 0, emptyIdx = -1;
+                for (let j = 0; j < boardSize; j++) {
+                    if (row[j] === symbol) count++;
+                    else if (!row[j]) emptyIdx = j;
+                }
+                if (count === boardSize - 1 && emptyIdx !== -1) return [i, emptyIdx];
+            }
+            // check cols
+            for (let j = 0; j < boardSize; j++) {
+                let count = 0, emptyIdx = -1;
+                for (let i = 0; i < boardSize; i++) {
+                    if (board[i][j] === symbol) count++;
+                    else if (!board[i][j]) emptyIdx = i;
+                }
+                if (count === boardSize - 1 && emptyIdx !== -1) return [emptyIdx, j];
+            }
+            // main diag
+            let count = 0, empty = -1;
+            for (let i = 0; i < boardSize; i++) {
+                if (board[i][i] === symbol) count++;
+                else if (!board[i][i]) empty = i;
+            }
+            if (count === boardSize - 1 && empty !== -1) return [empty, empty];
+            // anti diag
+            count = 0; empty = -1;
+            for (let i = 0; i < boardSize; i++) {
+                if (board[i][boardSize - 1 - i] === symbol) count++;
+                else if (!board[i][boardSize - 1 - i]) empty = i;
+            }
+            if (count === boardSize - 1 && empty !== -1) return [empty, boardSize - 1 - empty];
+            return null;
+        }
+
+        // basic hard AI (similar to medium but prioritize self-win)
+        function findBestMove() {
+            return findMove('O') || findMove('X');
         }
     </script>
 </body>
