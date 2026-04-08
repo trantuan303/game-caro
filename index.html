@@ -1,0 +1,290 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cờ Caro</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background-color: AntiqueWhite;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 900px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .card {
+            background-color: Aquamarine;
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+            button:hover {
+                opacity: 0.8;
+            }
+
+        .back-btn {
+            font-size: 30px;
+            background-color: AntiqueWhite;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+        }
+
+        .board {
+            display: grid;
+            margin: 20px auto;
+            border: 2px solid #333;
+            background-color: #fff;
+        }
+
+        .cell {
+            border: 1px solid #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2em;
+            cursor: pointer;
+        }
+
+        .score {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            font-size: 18px;
+            margin-top: 10px;
+        }
+
+        input {
+            padding: 8px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #999;
+        }
+
+        h1, h2 {
+            margin: 10px 0;
+        }
+
+        .wrap-btn {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .list-ranking {
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 10px;
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <!-- MENU -->
+        <div id="menu" class="card">
+            <h1>Chào mừng đến cờ caro</h1>
+            <h2>Lựa chọn</h2>
+            <button onclick="showMode('computer')">Chơi với máy</button>
+            <button onclick="showMode('player')">Chơi với người</button>
+            <button onclick="showRank()">Xếp hạng</button>
+        </div>
+
+        <!-- MODE -->
+        <div id="mode" class="card hidden">
+            <button class="back-btn" onclick="backMenu()">←</button>
+            <h1>Chọn mode</h1>
+            <div class="wrap-btn">
+                <button onclick="selectSize(3)">3 x 3</button>
+                <button onclick="selectSize(4)">4 x 4</button>
+                <button onclick="selectSize(5)">5 x 5</button>
+            </div>
+            <div style="display:flex; justify-content: space-around; margin-top: 20px;">
+                <div>
+                    <label>Tên người chơi (X)</label><br>
+                    <input type="text" id="playerX" placeholder="Người chơi X">
+                </div>
+                <div>
+                    <label>Tên người chơi (O)</label><br>
+                    <input type="text" id="playerO" placeholder="Người chơi O">
+                </div>
+            </div>
+        </div>
+
+        <!-- GAME -->
+        <div id="game" class="card hidden">
+            <button class="back-btn" onclick="backMode()">←</button>
+            <h2 id="lblMode"></h2>
+            <div id="boardContainer"></div>
+            <div class="score">
+                <div id="lblX">X: 0</div>
+                <div id="lblO">O: 0</div>
+            </div>
+            <div style="margin-top: 10px;">
+                <button onclick="resetBoard()">Reset</button>
+                <button onclick="newGame()">Tạo mới</button>
+            </div>
+        </div>
+
+        <!-- CHE DO -->
+        <div id="chedo" class="card hidden">
+            <button class="back-btn" onclick="backMode()">←</button>
+            <h1>Chọn chế độ</h1>
+            <button onclick="setDifficulty('easy')">Dễ</button>
+            <button onclick="setDifficulty('medium')">Trung bình</button>
+            <button onclick="setDifficulty('hard')">Khó</button>
+        </div>
+
+        <!-- RANK -->
+        <div id="rank" class="card hidden">
+            <button class="back-btn" onclick="backMenu()">←</button>
+            <h1>Bảng xếp hạng</h1>
+            <div class="list-ranking" id="rankingList">
+                <!-- Danh sách ranking sẽ được thêm bằng JS -->
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let currentMode = '';
+        let boardSize = 3;
+        let playerTurn = 'X';
+        let board = [];
+        let score = { X: 0, O: 0 };
+
+        function showMode(mode) {
+            currentMode = mode;
+            document.getElementById('menu').classList.add('hidden');
+            document.getElementById('mode').classList.remove('hidden');
+        }
+
+        function backMenu() {
+            document.getElementById('mode').classList.add('hidden');
+            document.getElementById('rank').classList.add('hidden');
+            document.getElementById('menu').classList.remove('hidden');
+        }
+
+        function showRank() {
+            document.getElementById('menu').classList.add('hidden');
+            document.getElementById('rank').classList.remove('hidden');
+            document.getElementById('rankingList').innerHTML = '<p>Chưa có dữ liệu</p>';
+        }
+
+        function selectSize(size) {
+            boardSize = size;
+            startGame();
+        }
+
+        function backMode() {
+            document.getElementById('game').classList.add('hidden');
+            document.getElementById('chedo').classList.add('hidden');
+            document.getElementById('mode').classList.remove('hidden');
+        }
+
+        function startGame() {
+            document.getElementById('mode').classList.add('hidden');
+            document.getElementById('game').classList.remove('hidden');
+            document.getElementById('lblMode').innerText = currentMode === 'computer' ? 'Chơi với máy' : 'Chơi với người';
+            createBoard();
+        }
+
+        function createBoard() {
+            const container = document.getElementById('boardContainer');
+            container.innerHTML = '';
+            board = Array(boardSize).fill().map(() => Array(boardSize).fill(''));
+            container.style.gridTemplateColumns = `repeat(${boardSize}, 60px)`;
+            container.style.gridTemplateRows = `repeat(${boardSize}, 60px)`;
+            container.className = 'board';
+            for (let i = 0; i < boardSize; i++) {
+                for (let j = 0; j < boardSize; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    cell.addEventListener('click', () => handleClick(i, j, cell));
+                    container.appendChild(cell);
+                }
+            }
+        }
+
+        function handleClick(row, col, cell) {
+            if (board[row][col]) return;
+            board[row][col] = playerTurn;
+            cell.innerText = playerTurn;
+            if (checkWin(playerTurn)) {
+                alert(`${playerTurn} thắng!`);
+                score[playerTurn]++;
+                updateScore();
+                resetBoard();
+                return;
+            }
+            playerTurn = playerTurn === 'X' ? 'O' : 'X';
+        }
+
+        function checkWin(player) {
+            // check rows, cols, diagonals
+            for (let i = 0; i < boardSize; i++) {
+                if (board[i].every(c => c === player)) return true;
+                if (board.map(r => r[i]).every(c => c === player)) return true;
+            }
+            if (board.map((r, i) => r[i]).every(c => c === player)) return true;
+            if (board.map((r, i) => r[boardSize - 1 - i]).every(c => c === player)) return true;
+            return false;
+        }
+
+        function resetBoard() {
+            createBoard();
+            playerTurn = 'X';
+        }
+
+        function newGame() {
+            score = { X: 0, O: 0 };
+            updateScore();
+            resetBoard();
+        }
+
+        function updateScore() {
+            document.getElementById('lblX').innerText = `X: ${score.X}`;
+            document.getElementById('lblO').innerText = `O: ${score.O}`;
+        }
+
+        function setDifficulty(level) {
+            alert('Chế độ ' + level);
+        }
+    </script>
+</body>
+</html>
